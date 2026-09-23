@@ -1,152 +1,62 @@
 from flask import Flask, render_template, jsonify, request, send_file
 import pandas as pd
-import plotly
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import folium
-import json
-from datetime import datetime, timedelta
+import time
+from datetime import datetime
 import io
 
 from weather_api import CWAWeatherAPI
 from database import WeatherDatabase
-import numpy as np
 
-app = Flask(__name__)
+# Vercel 只會用 CDN 提供 public/ 底下的靜態檔，本機則由 Flask 自己提供同一個資料夾
+app = Flask(__name__, static_folder='public/static', static_url_path='/static')
 
-def generate_sample_data():
-    """生成範例天氣資料"""
-    import random
-    from datetime import datetime, timedelta
-    
-    locations = ['臺北市', '新北市', '臺中市', '高雄市', '桃園市']
-    sample_data = []
-    
-    base_time = datetime.now()
-    
-    for i in range(3):  # 3個時段
-        for location in locations:
-            start_time = base_time + timedelta(hours=i*8)
-            end_time = start_time + timedelta(hours=8)
-            
-            sample_data.append({
-                'location': location,
-                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'end_time': end_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'max_temp': random.uniform(20, 35),
-                'min_temp': random.uniform(15, 25),
-                'pop': random.uniform(0, 80),
-                'weather_description': random.choice(['晴天', '多雲', '陰天', '小雨']),
-                'comfort_index': random.choice(['舒適', '稍熱', '悶熱'])
-            })
-    
-    return pd.DataFrame(sample_data)
+WEEKLY_CACHE_SECONDS = 30 * 60
+_weekly_cache = {'timestamp': 0, 'data': None}
+
 
 def load_weather_data(location=None):
     """載入天氣資料"""
     db = WeatherDatabase()
     return db.get_weather_data(location=location)
 
-def fetch_new_weather_data(location):
-    """獲取新的天氣資料"""
+
+def fetch_all_weather_data():
+    """一次抓取全台 22 縣市的 36 小時預報並存入資料庫"""
     try:
         api = CWAWeatherAPI()
-        raw_data = api.fetch_weather_forecast(location)
+        raw_data = api.fetch_weather_forecast(None)
         if raw_data:
             df = api.parse_weather_data(raw_data)
             if not df.empty:
-                db = WeatherDatabase()
-                db.save_weather_data(df)
+                WeatherDatabase().save_weather_data(df)
                 return df
     except Exception as e:
-        print(f"獲取 {location} 天氣資料時發生錯誤: {e}")
+        print(f"獲取天氣資料時發生錯誤: {e}")
     return pd.DataFrame()
 
-def create_temperature_chart(df):
-    """建立簡化的溫度趨勢圖"""
-    if df.empty:
-        return None
-    
-    fig = go.Figure()
-    
-    # 為每個縣市添加最高溫和最低溫線條
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
-    color_idx = 0
-    
-    for location in df['location'].unique():
-        location_data = df[df['location'] == location].sort_values('start_time')
-        
-        if len(location_data) > 0:
-            # 最高溫線
-            fig.add_trace(
-                go.Scatter(
-                    x=location_data['start_time'],
-                    y=location_data['max_temp'],
-                    mode='lines+markers',
-                    name=f'{location} 最高溫',
-                    line=dict(color=colors[color_idx % len(colors)], width=3),
-                    marker=dict(size=8, symbol='circle')
-                )
-            )
-            
-            # 最低溫線
-            fig.add_trace(
-                go.Scatter(
-                    x=location_data['start_time'],
-                    y=location_data['min_temp'],
-                    mode='lines+markers',
-                    name=f'{location} 最低溫',
-                    line=dict(color=colors[color_idx % len(colors)], width=2, dash='dash'),
-                    marker=dict(size=6, symbol='diamond')
-                )
-            )
-            
-            color_idx += 1
-    
-    fig.update_layout(
-        title={
-            'text': "📈 一周溫度趨勢預報",
-            'x': 0.5,
-            'font': {'size': 20, 'color': '#2c3e50'}
-        },
-        xaxis_title="時間",
-        yaxis_title="溫度 (°C)",
-        height=500,
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
-        ),
-        hovermode='x unified',
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family="Arial, sans-serif", size=12),
-        margin=dict(t=80, b=60, l=60, r=60)
-    )
-    
-    # 美化軸線
-    fig.update_xaxes(
-        showgrid=True, 
-        gridwidth=1, 
-        gridcolor='rgba(128,128,128,0.2)',
-        showline=True, 
-        linewidth=1, 
-        linecolor='rgba(128,128,128,0.3)'
-    )
-    fig.update_yaxes(
-        showgrid=True, 
-        gridwidth=1, 
-        gridcolor='rgba(128,128,128,0.2)',
-        showline=True, 
-        linewidth=1, 
-        linecolor='rgba(128,128,128,0.3)'
-    )
-    
-    return fig
+
+def load_or_fetch_weather_data():
+    """資料庫沒資料時（例如 Vercel 冷啟動），先向 API 抓一次"""
+    all_data = load_weather_data()
+    if all_data.empty:
+        fetch_all_weather_data()
+        all_data = load_weather_data()
+    return all_data
+
+
+def get_weekly_temperature():
+    """取得一週逐日最高／最低溫，快取 30 分鐘"""
+    now = time.time()
+    if _weekly_cache['data'] is not None and now - _weekly_cache['timestamp'] < WEEKLY_CACHE_SECONDS:
+        return _weekly_cache['data']
+
+    df = CWAWeatherAPI().fetch_weekly_temperature()
+    if not df.empty:
+        _weekly_cache['data'] = df
+        _weekly_cache['timestamp'] = now
+    return df
+
 
 def create_weather_map(df):
     """建立天氣地圖"""
@@ -219,37 +129,12 @@ def create_weather_map(df):
     
     return m
 
+
 @app.route('/')
 def index():
     """主頁面"""
     try:
-        # 自動載入所有天氣資料
-        all_data = load_weather_data()
-        
-        # 如果沒有資料，嘗試獲取所有縣市的資料
-        if all_data.empty:
-            # 預設縣市列表
-            default_locations = [
-                '臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市',
-                '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣',
-                '雲林縣', '嘉義縣', '嘉義市', '屏東縣', '宜蘭縣', '花蓮縣',
-                '臺東縣', '澎湖縣', '金門縣', '連江縣'
-            ]
-            
-            # 獲取所有縣市的資料
-            for location in default_locations[:5]:  # 先獲取前5個避免API限制
-                try:
-                    fetch_new_weather_data(location)
-                except:
-                    continue
-            
-            all_data = load_weather_data()
-        
-        # 如果仍然沒有資料，使用範例資料
-        if all_data.empty:
-            all_data = generate_sample_data()
-            print("主頁面使用範例資料")
-        
+        all_data = load_or_fetch_weather_data()
         locations = list(all_data['location'].unique()) if not all_data.empty else []
         
         return render_template('index.html', 
@@ -258,27 +143,15 @@ def index():
     except Exception as e:
         return render_template('error.html', error=str(e))
 
+
 @app.route('/api/weather-data')
 def get_weather_data():
     """API: 獲取天氣資料"""
     try:
-        selected_locations = request.args.getlist('locations')
-        
-        if selected_locations:
-            all_data = pd.DataFrame()
-            for location in selected_locations:
-                data = load_weather_data(location)
-                all_data = pd.concat([all_data, data], ignore_index=True)
-        else:
-            all_data = load_weather_data()
+        all_data = load_or_fetch_weather_data()
         
         if all_data.empty:
-            # 使用範例資料
-            all_data = generate_sample_data()
-            print("使用範例資料生成圖表")
-        
-        # 移除圖表功能，只保留統計資料
-        chart_json = None
+            return jsonify({'success': False, 'message': '目前無法取得氣象署資料，請確認 CWA_API_KEY 設定'})
         
         # 準備統計資料
         temp_stats = None
@@ -329,40 +202,50 @@ def get_weather_data():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+
+@app.route('/api/weekly-temperature')
+def weekly_temperature():
+    """API: 各縣市一週逐日最高溫／最低溫"""
+    try:
+        df = get_weekly_temperature()
+        if df.empty:
+            return jsonify({'success': False, 'message': '無法取得一週預報資料'})
+
+        series = {}
+        for location, group in df.groupby('location'):
+            group = group.sort_values('date')
+            series[location] = {
+                'dates': group['date'].tolist(),
+                'max_temp': group['max_temp'].tolist(),
+                'min_temp': group['min_temp'].tolist()
+            }
+
+        return jsonify({'success': True, 'series': series})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/api/update-weather')
 def update_weather():
-    """API: 更新天氣資料"""
+    """API: 更新全台天氣資料"""
     try:
-        locations = request.args.getlist('locations')
-        
-        if not locations:
-            return jsonify({'success': False, 'message': '未選擇縣市'})
-        
-        for location in locations:
-            fetch_new_weather_data(location)
-        
-        return jsonify({'success': True, 'message': f'已更新 {len(locations)} 個縣市的資料'})
+        df = fetch_all_weather_data()
+        _weekly_cache['data'] = None
+
+        if df.empty:
+            return jsonify({'success': False, 'error': '更新失敗，無法取得氣象署資料'})
+
+        return jsonify({'success': True, 'message': f"已更新 {df['location'].nunique()} 個縣市的資料"})
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
 
 @app.route('/api/weather-map')
 def get_weather_map():
     """API: 獲取天氣地圖"""
     try:
-        selected_locations = request.args.getlist('locations')
-        
-        if selected_locations:
-            all_data = pd.DataFrame()
-            for location in selected_locations:
-                data = load_weather_data(location)
-                all_data = pd.concat([all_data, data], ignore_index=True)
-        else:
-            all_data = load_weather_data()
-        
-        # 如果沒有資料，使用範例資料
-        if all_data.empty:
-            all_data = generate_sample_data()
+        all_data = load_or_fetch_weather_data()
         
         weather_map = create_weather_map(all_data)
         if weather_map:
@@ -372,6 +255,7 @@ def get_weather_map():
     
     except Exception as e:
         return f'<p>錯誤: {str(e)}</p>'
+
 
 @app.route('/api/download-csv')
 def download_csv():
@@ -405,8 +289,6 @@ def download_csv():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# For Vercel deployment
-application = app
 
 if __name__ == '__main__':
     app.run(debug=True)

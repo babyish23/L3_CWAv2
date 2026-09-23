@@ -1,6 +1,8 @@
 // 全域變數
 let currentData = [];
+let weeklySeries = {};
 let loadingModal;
+const DEFAULT_WEEKLY_LOCATION = '臺中市';
 
 // 初始化應用
 document.addEventListener('DOMContentLoaded', function() {
@@ -8,13 +10,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     updateLastUpdateTime();
     
-    // 靜默載入資料（不顯示loading）
-    loadAllWeatherDataSilently();
+    // 網址帶 #chart 或 #data 時直接開啟對應分頁
+    const tabFromHash = document.getElementById(`${location.hash.slice(1)}-tab`);
+    if (tabFromHash) bootstrap.Tab.getOrCreateInstance(tabFromHash).show();
     
-    // 預設載入地圖（因為地圖是預設標籤）
-    setTimeout(() => {
-        loadWeatherMap();
-    }, 1000);
+    loadAllWeatherDataSilently();
+    loadWeatherMap();
+    loadWeeklyTemperature();
 });
 
 // 初始化事件監聽器
@@ -34,8 +36,14 @@ function initializeEventListeners() {
     document.getElementById('locationFilter').addEventListener('change', filterAndDisplayTable);
     document.getElementById('sortColumn').addEventListener('change', filterAndDisplayTable);
     
-    // 標籤頁切換事件
-    document.getElementById('map-tab').addEventListener('shown.bs.tab', loadWeatherMap);
+    // 一週溫度圖的縣市切換
+    document.getElementById('weeklyLocation').addEventListener('change', displayWeeklyChart);
+    
+    // 圖表在隱藏分頁中繪製時寬度為 0，切換到分頁後要重新計算尺寸
+    document.getElementById('chart-tab').addEventListener('shown.bs.tab', function() {
+        const chartDiv = document.getElementById('temperatureChart');
+        if (chartDiv.data) Plotly.Plots.resize(chartDiv);
+    });
 }
 
 // 顯示警告訊息
@@ -133,24 +141,14 @@ async function updateAllWeatherData() {
     showLoading();
     
     try {
-        // 預設縣市列表
-        const allLocations = [
-            '臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市',
-            '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣'
-        ];
-        
-        const params = new URLSearchParams();
-        allLocations.forEach(loc => params.append('locations', loc));
-        
-        const response = await fetch(`/api/update-weather?${params}`);
+        const response = await fetch('/api/update-weather');
         const result = await response.json();
         
         if (result.success) {
             showAlert(result.message, 'success');
-            // 更新完成後重新載入資料
-            setTimeout(() => {
-                loadAllWeatherData();
-            }, 2000);
+            loadAllWeatherData();
+            loadWeatherMap();
+            loadWeeklyTemperature();
         } else {
             showAlert(result.error, 'danger');
         }
@@ -161,20 +159,80 @@ async function updateAllWeatherData() {
     }
 }
 
-// 顯示圖表
-function displayChart(chartData) {
+// 載入一週溫度預報
+async function loadWeeklyTemperature() {
     const chartDiv = document.getElementById('temperatureChart');
     
     try {
-        Plotly.newPlot(chartDiv, chartData.data, chartData.layout, {
-            responsive: true,
-            displayModeBar: true,
-            modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
-        });
+        const response = await fetch('/api/weekly-temperature');
+        const result = await response.json();
+        
+        if (!result.success) {
+            chartDiv.innerHTML = `<p class="text-center text-muted pt-5">${result.message || result.error}</p>`;
+            return;
+        }
+        
+        weeklySeries = result.series;
+        
+        const select = document.getElementById('weeklyLocation');
+        const previous = select.value;
+        const locations = Object.keys(weeklySeries);
+        select.innerHTML = locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+        select.value = locations.includes(previous) ? previous
+            : (locations.includes(DEFAULT_WEEKLY_LOCATION) ? DEFAULT_WEEKLY_LOCATION : locations[0]);
+        
+        displayWeeklyChart();
     } catch (error) {
-        console.error('圖表顯示錯誤:', error);
-        chartDiv.innerHTML = '<p class="text-center text-muted">圖表載入失敗</p>';
+        chartDiv.innerHTML = '<p class="text-center text-muted pt-5">一週預報載入失敗：' + error.message + '</p>';
     }
+}
+
+// 繪製選定縣市的一週最高／最低溫折線圖
+function displayWeeklyChart() {
+    const chartDiv = document.getElementById('temperatureChart');
+    const location = document.getElementById('weeklyLocation').value;
+    const series = weeklySeries[location];
+    if (!series) return;
+    
+    const traces = [
+        {
+            x: series.dates,
+            y: series.max_temp,
+            name: '最高溫',
+            type: 'scatter',
+            mode: 'lines+markers+text',
+            text: series.max_temp.map(v => `${v}°`),
+            textposition: 'top center',
+            line: { color: '#e74c3c', width: 3 },
+            marker: { size: 8 }
+        },
+        {
+            x: series.dates,
+            y: series.min_temp,
+            name: '最低溫',
+            type: 'scatter',
+            mode: 'lines+markers+text',
+            text: series.min_temp.map(v => `${v}°`),
+            textposition: 'bottom center',
+            line: { color: '#3498db', width: 3 },
+            marker: { size: 8 }
+        }
+    ];
+    
+    const allTemps = series.max_temp.concat(series.min_temp);
+    const layout = {
+        title: { text: `${location} 一週溫度預報` },
+        xaxis: { title: { text: '日期' }, type: 'category' },
+        yaxis: { title: { text: '溫度 (°C)' }, range: [Math.min(...allTemps) - 3, Math.max(...allTemps) + 3] },
+        legend: { orientation: 'h', x: 1, xanchor: 'right', y: 1.12 },
+        hovermode: 'x unified',
+        margin: { t: 60, r: 20, b: 60, l: 60 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)'
+    };
+    
+    chartDiv.innerHTML = '';
+    Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displaylogo: false });
 }
 
 // 更新統計資訊

@@ -21,7 +21,7 @@ class CWAWeatherAPI:
         獲取36小時天氣預報資料
         
         Args:
-            location_name (str): 縣市名稱，如 "臺北市", "桃園市"
+            location_name (str): 縣市名稱，如 "臺北市", "桃園市"；None 表示全部縣市
             
         Returns:
             dict: API回應的完整資料
@@ -32,9 +32,10 @@ class CWAWeatherAPI:
         
         params = {
             'Authorization': self.api_key,
-            'format': 'JSON',
-            'locationName': location_name
+            'format': 'JSON'
         }
+        if location_name:
+            params['locationName'] = location_name
         
         url = f"{self.base_url}/{dataset_id}"
         
@@ -141,6 +142,59 @@ class CWAWeatherAPI:
         
         return df
     
+    def fetch_weekly_temperature(self):
+        """
+        獲取全台各縣市一週逐日最高溫與最低溫
+
+        Returns:
+            pd.DataFrame: 欄位 location, date, max_temp, min_temp
+        """
+        # F-D0047-091: 鄉鎮天氣預報-臺灣未來1週天氣預報（縣市層級，12小時一個時段）
+        url = f"{self.base_url}/F-D0047-091"
+        params = {
+            'Authorization': self.api_key,
+            'format': 'JSON',
+            'ElementName': '最高溫度,最低溫度'
+        }
+
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+            print(f"一週預報請求錯誤: {e}")
+            return pd.DataFrame()
+
+        rows = []
+        for locations in data.get('records', {}).get('Locations', []):
+            for location in locations.get('Location', []):
+                name = location.get('LocationName', '')
+                for element in location.get('WeatherElement', []):
+                    element_name = element.get('ElementName')
+                    if element_name == '最高溫度':
+                        field, value_key = 'max_temp', 'MaxTemperature'
+                    elif element_name == '最低溫度':
+                        field, value_key = 'min_temp', 'MinTemperature'
+                    else:
+                        continue
+                    for period in element.get('Time', []):
+                        values = period.get('ElementValue') or [{}]
+                        rows.append({
+                            'location': name,
+                            'date': period.get('StartTime', '')[:10],
+                            'field': field,
+                            'value': pd.to_numeric(values[0].get(value_key), errors='coerce')
+                        })
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rows).dropna(subset=['value'])
+        max_daily = df[df['field'] == 'max_temp'].groupby(['location', 'date'])['value'].max()
+        min_daily = df[df['field'] == 'min_temp'].groupby(['location', 'date'])['value'].min()
+        daily = pd.DataFrame({'max_temp': max_daily, 'min_temp': min_daily}).reset_index()
+        return daily.sort_values(['location', 'date']).reset_index(drop=True)
+
     def get_available_locations(self):
         """
         獲取所有可用的縣市列表

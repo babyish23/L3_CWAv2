@@ -3,8 +3,11 @@ import pandas as pd
 from datetime import datetime
 import os
 
+# Vercel 的程式目錄是唯讀的，只有 /tmp 可以寫入
+DEFAULT_DB_PATH = "/tmp/weather_data.db" if os.environ.get("VERCEL") else "weather_data.db"
+
 class WeatherDatabase:
-    def __init__(self, db_path="weather_data.db"):
+    def __init__(self, db_path=DEFAULT_DB_PATH):
         self.db_path = db_path
         self.init_database()
     
@@ -61,13 +64,12 @@ class WeatherDatabase:
         conn = sqlite3.connect(self.db_path)
         
         try:
-            # 使用 REPLACE 來處理重複資料
-            saved_count = df_to_save.to_sql(
-                'weather_forecast', 
-                conn, 
-                if_exists='append', 
-                index=False,
-                method='multi'
+            # 同一縣市同一時段已存在時覆蓋成最新預報
+            columns = list(df_to_save.columns)
+            placeholders = ", ".join("?" for _ in columns)
+            conn.executemany(
+                f"INSERT OR REPLACE INTO weather_forecast ({', '.join(columns)}) VALUES ({placeholders})",
+                df_to_save.astype(object).where(df_to_save.notna(), None).values.tolist()
             )
             
             conn.commit()
