@@ -55,9 +55,14 @@ class WeatherMonitor:
                 precipitation REAL,
                 weather_desc TEXT,
                 uv_index REAL,
-                created_at TEXT NOT NULL,
-                UNIQUE(station_id, obs_time)
+                created_at TEXT NOT NULL
             )
+        ''')
+        
+        # 建立唯一索引來避免重複資料
+        cursor.execute('''
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_station_obs_time 
+            ON weather_observations(station_id, obs_time)
         ''')
         
         conn.commit()
@@ -168,12 +173,36 @@ class WeatherMonitor:
             return 0
             
         conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
         try:
-            saved_count = df.to_sql('weather_observations', conn, if_exists='append', index=False)
+            saved_count = 0
+            
+            for _, row in df.iterrows():
+                # 使用 INSERT OR REPLACE 避免重複資料問題
+                cursor.execute('''
+                    INSERT OR REPLACE INTO weather_observations (
+                        station_name, station_id, obs_time, latitude, longitude,
+                        county_name, town_name, temperature, humidity, pressure,
+                        wind_speed, wind_direction, precipitation, weather_desc,
+                        uv_index, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    row['station_name'], row['station_id'], row['obs_time'],
+                    row['latitude'], row['longitude'], row['county_name'],
+                    row['town_name'], row['temperature'], row['humidity'],
+                    row['pressure'], row['wind_speed'], row['wind_direction'],
+                    row['precipitation'], row['weather_desc'], row['uv_index'],
+                    row['created_at']
+                ))
+                saved_count += 1
+            
             conn.commit()
-            return len(df)
+            return saved_count
+            
         except Exception as e:
             st.error(f"資料庫儲存失敗: {e}")
+            conn.rollback()
             return 0
         finally:
             conn.close()
