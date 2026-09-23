@@ -64,65 +64,86 @@ def fetch_new_weather_data(location):
     return pd.DataFrame()
 
 def create_temperature_chart(df):
-    """建立溫度圖表"""
+    """建立簡化的溫度趨勢圖"""
     if df.empty:
         return None
     
-    fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=('溫度趨勢', '降雨機率'),
-        vertical_spacing=0.1
-    )
+    fig = go.Figure()
     
-    # 溫度圖
+    # 為每個縣市添加最高溫和最低溫線條
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
+    color_idx = 0
+    
     for location in df['location'].unique():
         location_data = df[df['location'] == location].sort_values('start_time')
         
-        fig.add_trace(
-            go.Scatter(
-                x=location_data['start_time'],
-                y=location_data['max_temp'],
-                mode='lines+markers',
-                name=f'{location} 最高溫',
-                line=dict(color='red', width=2),
-                marker=dict(size=6)
-            ),
-            row=1, col=1
-        )
-        
-        fig.add_trace(
-            go.Scatter(
-                x=location_data['start_time'],
-                y=location_data['min_temp'],
-                mode='lines+markers',
-                name=f'{location} 最低溫',
-                line=dict(color='blue', width=2),
-                marker=dict(size=6)
-            ),
-            row=1, col=1
-        )
-        
-        # 降雨機率
-        fig.add_trace(
-            go.Bar(
-                x=location_data['start_time'],
-                y=location_data['pop'],
-                name=f'{location} 降雨機率',
-                marker_color='lightblue',
-                opacity=0.7
-            ),
-            row=2, col=1
-        )
-    
-    fig.update_xaxes(title_text="時間", row=2, col=1)
-    fig.update_yaxes(title_text="溫度 (°C)", row=1, col=1)
-    fig.update_yaxes(title_text="降雨機率 (%)", row=2, col=1)
+        if len(location_data) > 0:
+            # 最高溫線
+            fig.add_trace(
+                go.Scatter(
+                    x=location_data['start_time'],
+                    y=location_data['max_temp'],
+                    mode='lines+markers',
+                    name=f'{location} 最高溫',
+                    line=dict(color=colors[color_idx % len(colors)], width=3),
+                    marker=dict(size=8, symbol='circle')
+                )
+            )
+            
+            # 最低溫線
+            fig.add_trace(
+                go.Scatter(
+                    x=location_data['start_time'],
+                    y=location_data['min_temp'],
+                    mode='lines+markers',
+                    name=f'{location} 最低溫',
+                    line=dict(color=colors[color_idx % len(colors)], width=2, dash='dash'),
+                    marker=dict(size=6, symbol='diamond')
+                )
+            )
+            
+            color_idx += 1
     
     fig.update_layout(
-        title="天氣預報趨勢圖",
-        height=600,
+        title={
+            'text': "📈 一周溫度趨勢預報",
+            'x': 0.5,
+            'font': {'size': 20, 'color': '#2c3e50'}
+        },
+        xaxis_title="時間",
+        yaxis_title="溫度 (°C)",
+        height=500,
         showlegend=True,
-        hovermode='x unified'
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
+        ),
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(family="Arial, sans-serif", size=12),
+        margin=dict(t=80, b=60, l=60, r=60)
+    )
+    
+    # 美化軸線
+    fig.update_xaxes(
+        showgrid=True, 
+        gridwidth=1, 
+        gridcolor='rgba(128,128,128,0.2)',
+        showline=True, 
+        linewidth=1, 
+        linecolor='rgba(128,128,128,0.3)'
+    )
+    fig.update_yaxes(
+        showgrid=True, 
+        gridwidth=1, 
+        gridcolor='rgba(128,128,128,0.2)',
+        showline=True, 
+        linewidth=1, 
+        linecolor='rgba(128,128,128,0.3)'
     )
     
     return fig
@@ -256,10 +277,9 @@ def get_weather_data():
             all_data = generate_sample_data()
             print("使用範例資料生成圖表")
         
-        # 移除圖表功能，只保留統計資料
-        # fig = create_temperature_chart(all_data)
-        # chart_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder) if fig else None
-        chart_json = None
+        # 準備圖表資料
+        fig = create_temperature_chart(all_data)
+        chart_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder) if fig else None
         
         # 準備統計資料
         temp_stats = None
@@ -299,6 +319,7 @@ def get_weather_data():
         
         return jsonify({
             'success': True,
+            'chart': chart_json,
             'data': all_data.to_dict('records'),
             'stats': {
                 'temp': temp_stats,

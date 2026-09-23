@@ -83,7 +83,12 @@ async function loadAllWeatherData() {
         if (result.success) {
             currentData = result.data;
             
-            // 更新統計（移除圖表功能）
+            // 更新圖表
+            if (result.chart) {
+                displayChart(result.chart);
+            }
+            
+            // 更新統計
             updateStatistics(result.stats);
             
             // 更新篩選選項
@@ -114,7 +119,12 @@ async function loadAllWeatherDataSilently() {
         if (result.success) {
             currentData = result.data;
             
-            // 更新統計（移除圖表功能）
+            // 更新圖表
+            if (result.chart) {
+                displayChart(result.chart);
+            }
+            
+            // 更新統計
             updateStatistics(result.stats);
             
             // 更新篩選選項

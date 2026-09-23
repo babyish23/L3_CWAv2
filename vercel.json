@@ -11,8 +11,5 @@
             "src": "/(.*)",
             "dest": "./app.py"
         }
-    ],
-    "env": {
-        "CWA_API_KEY": "@cwa_api_key"
-    }
+    ]
 }
