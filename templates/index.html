@@ -49,7 +49,7 @@
                 <button class="nav-link active" id="map-tab" data-bs-toggle="tab" data-bs-target="#map" type="button" role="tab">🗺️ 地圖檢視</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart" type="button" role="tab">📊 圖表分析</button>
+                <button class="nav-link" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart" type="button" role="tab">📊 統計分析</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="data-tab" data-bs-toggle="tab" data-bs-target="#data" type="button" role="tab">📋 詳細資料</button>
@@ -69,23 +69,32 @@
                 </div>
             </div>
 
-            <!-- 圖表分析標籤 -->
+            <!-- 統計分析標籤 -->
             <div class="tab-pane fade" id="chart" role="tabpanel">
                 <div class="row mt-4">
-                    <div class="col-12">
-                        <div id="temperatureChart"></div>
+                    <div class="col-12 text-center mb-4">
+                        <h4>📊 天氣統計分析</h4>
+                        <p class="text-muted">各縣市溫度與降雨機率統計資料</p>
                     </div>
                 </div>
                 
                 <!-- 統計摘要 -->
-                <div class="row mt-4">
+                <div class="row mt-2">
                     <div class="col-md-6">
-                        <h5>🌡️ 溫度統計</h5>
-                        <div id="tempStats"></div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">🌡️ 溫度統計</h5>
+                                <div id="tempStats"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <h5>🌧️ 降雨統計</h5>
-                        <div id="popStats"></div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">🌧️ 降雨統計</h5>
+                                <div id="popStats"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
