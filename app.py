@@ -277,9 +277,8 @@ def get_weather_data():
             all_data = generate_sample_data()
             print("使用範例資料生成圖表")
         
-        # 準備圖表資料
-        fig = create_temperature_chart(all_data)
-        chart_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder) if fig else None
+        # 移除圖表功能，只保留統計資料
+        chart_json = None
         
         # 準備統計資料
         temp_stats = None
@@ -319,7 +318,6 @@ def get_weather_data():
         
         return jsonify({
             'success': True,
-            'chart': chart_json,
             'data': all_data.to_dict('records'),
             'stats': {
                 'temp': temp_stats,
