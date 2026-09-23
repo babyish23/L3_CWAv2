@@ -405,8 +405,9 @@ def download_csv():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# For Vercel deployment
-application = app
+# For Vercel serverless function
+def handler(request):
+    return app(request.environ, lambda status, headers: None)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Export for Vercel
+application = app
