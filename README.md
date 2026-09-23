@@ -1,4 +1,4 @@
-# AIOT-HW1 - 台灣天氣預報系統
+# L3_CWAv2 - 台灣天氣預報系統
 
 基於中央氣象署開放資料 API 的天氣預報儀表板，使用 Python + Streamlit 建構。
 
@@ -12,7 +12,7 @@
 ## 🏗️ 系統架構
 
 ```
-AIOT-HW1/
+L3_CWAv2/
 ├── weather_api.py      # CWA API 串接模組
 ├── database.py         # SQLite 資料庫管理
 ├── streamlit_app.py    # Streamlit 網頁應用
@@ -191,7 +191,7 @@ streamlit run streamlit_app.py
 ## 📞 聯絡資訊
 
 - **課程**: AIOT-DA  
-- **作業**: HW1 - 中央氣象署API應用
+- **作業**: L3 - 中央氣象署API應用 v2
 - **開發時間**: 2026年9月
 
 ## 📄 授權聲明

@@ -86,7 +86,7 @@ def test_basic_api():
         return False
 
 if __name__ == "__main__":
-    print("=== AIOT-HW1 系統測試 ===\n")
+    print("=== L3_CWAv2 系統測試 ===\n")
     
     print("1. 套件導入測試:")
     if not test_imports():
