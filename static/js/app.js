@@ -8,13 +8,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     updateLastUpdateTime();
     
-    // 自動載入所有縣市資料並載入地圖
-    loadAllWeatherData();
+    // 靜默載入資料（不顯示loading）
+    loadAllWeatherDataSilently();
     
     // 預設載入地圖（因為地圖是預設標籤）
     setTimeout(() => {
         loadWeatherMap();
-    }, 2000);
+    }, 1000);
 });
 
 // 初始化事件監聽器
@@ -107,6 +107,34 @@ async function loadAllWeatherData() {
         showAlert('載入資料時發生錯誤：' + error.message, 'danger');
     } finally {
         hideLoading();
+    }
+}
+
+// 靜默載入所有天氣資料（不顯示loading和alert）
+async function loadAllWeatherDataSilently() {
+    try {
+        const response = await fetch('/api/weather-data');
+        const result = await response.json();
+        
+        if (result.success) {
+            currentData = result.data;
+            
+            // 更新圖表
+            if (result.chart) {
+                displayChart(result.chart);
+            }
+            
+            // 更新統計
+            updateStatistics(result.stats);
+            
+            // 更新篩選選項
+            updateLocationFilter(result.data);
+            
+            // 更新表格
+            filterAndDisplayTable();
+        }
+    } catch (error) {
+        console.error('背景載入資料錯誤：', error);
     }
 }
 
