@@ -245,7 +245,7 @@ def main():
         
         status_text.text("OK: 資料更新完成!")
         time.sleep(1)
-        st.experimental_rerun()
+        st.rerun()
     
     # 載入資料
     if selected_locations:
