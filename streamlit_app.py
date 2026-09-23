@@ -243,7 +243,7 @@ def main():
             fetch_new_weather_data(location)
             time.sleep(0.5)  # 避免API請求過於頻繁
         
-        status_text.text("✅ 資料更新完成!")
+        status_text.text("OK: 資料更新完成!")
         time.sleep(1)
         st.experimental_rerun()
     
@@ -257,7 +257,7 @@ def main():
         all_data = pd.DataFrame()
     
     if all_data.empty:
-        st.warning("📭 目前沒有資料，請選擇縣市並點擊「更新天氣資料」按鈕")
+        st.warning("目前沒有資料，請選擇縣市並點擊「更新天氣資料」按鈕")
         return
     
     # 主要內容區域

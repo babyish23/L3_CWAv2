@@ -32,7 +32,7 @@ class WeatherDatabase:
         
         conn.commit()
         conn.close()
-        print(f"✓ 資料庫初始化完成: {self.db_path}")
+        print(f"OK: 資料庫初始化完成: {self.db_path}")
     
     def save_weather_data(self, df):
         """
@@ -71,11 +71,11 @@ class WeatherDatabase:
             )
             
             conn.commit()
-            print(f"✓ 成功儲存 {len(df_to_save)} 筆天氣資料")
+            print(f"OK: 成功儲存 {len(df_to_save)} 筆天氣資料")
             return len(df_to_save)
             
         except Exception as e:
-            print(f"✗ 儲存資料時發生錯誤: {e}")
+            print(f"FAIL: 儲存資料時發生錯誤: {e}")
             conn.rollback()
             return 0
         finally:
@@ -118,7 +118,7 @@ class WeatherDatabase:
             return df
             
         except Exception as e:
-            print(f"✗ 獲取資料時發生錯誤: {e}")
+            print(f"FAIL: 獲取資料時發生錯誤: {e}")
             return pd.DataFrame()
         finally:
             conn.close()
@@ -133,7 +133,7 @@ class WeatherDatabase:
             locations = [row[0] for row in cursor.fetchall()]
             return locations
         except Exception as e:
-            print(f"✗ 獲取縣市列表時發生錯誤: {e}")
+            print(f"FAIL: 獲取縣市列表時發生錯誤: {e}")
             return []
         finally:
             conn.close()
@@ -162,7 +162,7 @@ class WeatherDatabase:
                         df[col] = pd.to_datetime(df[col])
             return df
         except Exception as e:
-            print(f"✗ 獲取統計資料時發生錯誤: {e}")
+            print(f"FAIL: 獲取統計資料時發生錯誤: {e}")
             return pd.DataFrame()
         finally:
             conn.close()
@@ -182,14 +182,14 @@ class WeatherDatabase:
             conn.commit()
             
             if deleted_count > 0:
-                print(f"✓ 清除了 {deleted_count} 筆超過 {days_to_keep} 天的舊資料")
+                print(f"OK: 清除了 {deleted_count} 筆超過 {days_to_keep} 天的舊資料")
             else:
                 print("沒有需要清除的舊資料")
                 
             return deleted_count
             
         except Exception as e:
-            print(f"✗ 清除舊資料時發生錯誤: {e}")
+            print(f"FAIL: 清除舊資料時發生錯誤: {e}")
             return 0
         finally:
             conn.close()
@@ -232,7 +232,7 @@ def test_database():
     # 清理測試檔案
     if os.path.exists("test_weather.db"):
         os.remove("test_weather.db")
-        print("✓ 測試檔案已清理")
+        print("OK: 測試檔案已清理")
 
 if __name__ == "__main__":
     test_database()
