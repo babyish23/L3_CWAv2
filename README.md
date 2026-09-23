@@ -343,7 +343,7 @@ streamlit run streamlit_app.py
 
 ### 專案連結
 - **GitHub**: [https://github.com/babyish23/L3_CWAv2](https://github.com/babyish23/L3_CWAv2)
-- **線上展示**: [部署完成後更新]
+- **線上展示**: [https://l3owav2liaochla.vercel.app](https://l3owav2liaochla.vercel.app)
 - **技術文件**: 本 README.md
 
 ---
