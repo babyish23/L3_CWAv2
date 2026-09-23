@@ -189,9 +189,15 @@ def get_weather_data():
                     'min': pop_grouped.loc[location, ('pop', 'min')]
                 }
         
+        # jsonify 會把無時區的時間標成 GMT，瀏覽器再加 8 小時；改傳台灣當地時間字串
+        records = all_data.copy()
+        for col in ['start_time', 'end_time', 'created_at']:
+            if col in records.columns:
+                records[col] = records[col].dt.strftime('%Y-%m-%dT%H:%M:%S')
+
         return jsonify({
             'success': True,
-            'data': all_data.to_dict('records'),
+            'data': records.to_dict('records'),
             'stats': {
                 'temp': temp_stats,
                 'pop': pop_stats,
