@@ -51,10 +51,10 @@
         <!-- 標籤頁 -->
         <ul class="nav nav-tabs" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart" type="button" role="tab">📊 圖表分析</button>
+                <button class="nav-link active" id="map-tab" data-bs-toggle="tab" data-bs-target="#map" type="button" role="tab">🗺️ 地圖檢視</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="map-tab" data-bs-toggle="tab" data-bs-target="#map" type="button" role="tab">🗺️ 地圖檢視</button>
+                <button class="nav-link" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart" type="button" role="tab">📊 圖表分析</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="data-tab" data-bs-toggle="tab" data-bs-target="#data" type="button" role="tab">📋 詳細資料</button>
@@ -62,8 +62,20 @@
         </ul>
 
         <div class="tab-content" id="mainTabsContent">
+            <!-- 地圖檢視標籤 -->
+            <div class="tab-pane fade show active" id="map" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div id="weatherMap" style="height: 500px;"></div>
+                        <div class="alert alert-info mt-3">
+                            💡 地圖說明：紅色=高溫(≥30°C), 橙色=溫暖(25-29°C), 綠色=舒適(20-24°C), 藍色=涼爽(<20°C)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 圖表分析標籤 -->
-            <div class="tab-pane fade show active" id="chart" role="tabpanel">
+            <div class="tab-pane fade" id="chart" role="tabpanel">
                 <div class="row mt-4">
                     <div class="col-12">
                         <div id="temperatureChart"></div>
@@ -79,18 +91,6 @@
                     <div class="col-md-6">
                         <h5>🌧️ 降雨統計</h5>
                         <div id="popStats"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 地圖檢視標籤 -->
-            <div class="tab-pane fade" id="map" role="tabpanel">
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div id="weatherMap" style="height: 500px;"></div>
-                        <div class="alert alert-info mt-3">
-                            💡 地圖說明：紅色=高溫(≥30°C), 橙色=溫暖(25-29°C), 綠色=舒適(20-24°C), 藍色=涼爽(<20°C)
-                        </div>
                     </div>
                 </div>
             </div>

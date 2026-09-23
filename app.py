@@ -225,15 +225,36 @@ def get_weather_data():
         pop_stats = None
         
         if 'max_temp' in all_data.columns and 'min_temp' in all_data.columns:
-            temp_stats = all_data[['location', 'max_temp', 'min_temp']].groupby('location').agg({
+            temp_grouped = all_data[['location', 'max_temp', 'min_temp']].groupby('location').agg({
                 'max_temp': ['mean', 'max', 'min'],
                 'min_temp': ['mean', 'max', 'min']
-            }).round(1).to_dict()
+            }).round(1)
+            
+            # 扁平化多層級索引
+            temp_stats = {}
+            for location in temp_grouped.index:
+                temp_stats[location] = {
+                    'max_temp_mean': temp_grouped.loc[location, ('max_temp', 'mean')],
+                    'max_temp_max': temp_grouped.loc[location, ('max_temp', 'max')],
+                    'max_temp_min': temp_grouped.loc[location, ('max_temp', 'min')],
+                    'min_temp_mean': temp_grouped.loc[location, ('min_temp', 'mean')],
+                    'min_temp_max': temp_grouped.loc[location, ('min_temp', 'max')],
+                    'min_temp_min': temp_grouped.loc[location, ('min_temp', 'min')]
+                }
         
         if 'pop' in all_data.columns:
-            pop_stats = all_data[['location', 'pop']].groupby('location').agg({
+            pop_grouped = all_data[['location', 'pop']].groupby('location').agg({
                 'pop': ['mean', 'max', 'min']
-            }).round(1).to_dict()
+            }).round(1)
+            
+            # 扁平化多層級索引
+            pop_stats = {}
+            for location in pop_grouped.index:
+                pop_stats[location] = {
+                    'mean': pop_grouped.loc[location, ('pop', 'mean')],
+                    'max': pop_grouped.loc[location, ('pop', 'max')],
+                    'min': pop_grouped.loc[location, ('pop', 'min')]
+                }
         
         return jsonify({
             'success': True,

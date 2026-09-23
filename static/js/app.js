@@ -8,8 +8,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     updateLastUpdateTime();
     
-    // 自動載入所有縣市資料
+    // 自動載入所有縣市資料並載入地圖
     loadAllWeatherData();
+    
+    // 預設載入地圖（因為地圖是預設標籤）
+    setTimeout(() => {
+        loadWeatherMap();
+    }, 2000);
 });
 
 // 初始化事件監聽器
@@ -183,21 +188,10 @@ function createStatsTable(data, type) {
     
     if (type === 'temp') {
         headers = ['縣市', '平均最高溫', '最高溫度', '最低最高溫', '平均最低溫', '最高最低溫', '最低最低溫'];
-        keys = [
-            ['max_temp', 'mean'],
-            ['max_temp', 'max'], 
-            ['max_temp', 'min'],
-            ['min_temp', 'mean'],
-            ['min_temp', 'max'],
-            ['min_temp', 'min']
-        ];
+        keys = ['max_temp_mean', 'max_temp_max', 'max_temp_min', 'min_temp_mean', 'min_temp_max', 'min_temp_min'];
     } else {
         headers = ['縣市', '平均降雨機率', '最高降雨機率', '最低降雨機率'];
-        keys = [
-            ['pop', 'mean'],
-            ['pop', 'max'],
-            ['pop', 'min']
-        ];
+        keys = ['mean', 'max', 'min'];
     }
     
     let html = '<table class="table table-sm stats-table"><thead><tr>';
@@ -207,12 +201,12 @@ function createStatsTable(data, type) {
     html += '</tr></thead><tbody>';
     
     // 獲取所有位置
-    const locations = Object.keys(data[keys[0][0]]);
+    const locations = Object.keys(data);
     
     locations.forEach(location => {
         html += `<tr><td><strong>${location}</strong></td>`;
         keys.forEach(key => {
-            const value = data[key[0]][key[1]][location];
+            const value = data[location][key];
             const unit = type === 'temp' ? '°C' : '%';
             html += `<td>${value?.toFixed(1) || '-'}${unit}</td>`;
         });
