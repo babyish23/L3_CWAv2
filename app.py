@@ -169,11 +169,33 @@ def create_weather_map(df):
 def index():
     """主頁面"""
     try:
-        # 載入天氣資料
+        # 自動載入所有天氣資料
         all_data = load_weather_data()
+        
+        # 如果沒有資料，嘗試獲取所有縣市的資料
+        if all_data.empty:
+            # 預設縣市列表
+            default_locations = [
+                '臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市',
+                '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣',
+                '雲林縣', '嘉義縣', '嘉義市', '屏東縣', '宜蘭縣', '花蓮縣',
+                '臺東縣', '澎湖縣', '金門縣', '連江縣'
+            ]
+            
+            # 獲取所有縣市的資料
+            for location in default_locations[:5]:  # 先獲取前5個避免API限制
+                try:
+                    fetch_new_weather_data(location)
+                except:
+                    continue
+            
+            all_data = load_weather_data()
+        
         locations = list(all_data['location'].unique()) if not all_data.empty else []
         
-        return render_template('index.html', locations=locations)
+        return render_template('index.html', 
+                             locations=locations, 
+                             initial_data=all_data.to_dict('records') if not all_data.empty else [])
     except Exception as e:
         return render_template('error.html', error=str(e))
 

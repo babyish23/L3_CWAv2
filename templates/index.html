@@ -22,42 +22,27 @@
             </div>
         </div>
 
-        <!-- 控制面板 -->
+        <!-- 統計儀表板 -->
         <div class="row mb-4">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">🎛️ 控制面板</h5>
-                        
-                        <!-- 縣市選擇 -->
-                        <div class="mb-3">
-                            <label for="locationSelect" class="form-label">選擇縣市 (可多選)</label>
-                            <select class="form-select" id="locationSelect" multiple size="5">
-                                {% for location in locations %}
-                                <option value="{{ location }}">{{ location }}</option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">按住 Ctrl (Windows) 或 Cmd (Mac) 可多選</div>
-                        </div>
-                        
-                        <!-- 操作按鈕 -->
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-primary" id="loadDataBtn">📊 載入資料</button>
-                            <button type="button" class="btn btn-success" id="updateDataBtn">🔄 更新資料</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 統計卡片 -->
             <div class="col-md-4">
                 <div class="card weather-card">
                     <div class="card-body text-white">
                         <h5 class="card-title">📈 即時統計</h5>
                         <div id="statsDisplay">
-                            <p>總記錄數: <span id="totalRecords">-</span></p>
+                            <p>總記錄數: <span id="totalRecords">{{ initial_data|length }}</span></p>
+                            <p>涵蓋縣市: <span id="totalLocations">{{ locations|length }}</span> 個</p>
                             <p>最後更新: <span id="lastUpdate">-</span></p>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">🔄 資料更新</h5>
+                        <p class="card-text text-muted">顯示全台縣市天氣預報資料，點擊下方按鈕可手動更新</p>
+                        <button type="button" class="btn btn-success" id="updateDataBtn">🔄 更新全部資料</button>
+                        <button type="button" class="btn btn-primary" id="refreshPageBtn">🔃 重新載入頁面</button>
                     </div>
                 </div>
             </div>

@@ -7,15 +7,20 @@ document.addEventListener('DOMContentLoaded', function() {
     loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     initializeEventListeners();
     updateLastUpdateTime();
+    
+    // 自動載入所有縣市資料
+    loadAllWeatherData();
 });
 
 // 初始化事件監聽器
 function initializeEventListeners() {
-    // 載入資料按鈕
-    document.getElementById('loadDataBtn').addEventListener('click', loadWeatherData);
-    
     // 更新資料按鈕
-    document.getElementById('updateDataBtn').addEventListener('click', updateWeatherData);
+    document.getElementById('updateDataBtn').addEventListener('click', updateAllWeatherData);
+    
+    // 重新載入頁面按鈕
+    document.getElementById('refreshPageBtn').addEventListener('click', function() {
+        window.location.reload();
+    });
     
     // 下載按鈕
     document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
@@ -62,36 +67,12 @@ function hideLoading() {
     loadingModal.hide();
 }
 
-// 獲取選中的縣市
-function getSelectedLocations() {
-    const select = document.getElementById('locationSelect');
-    const selected = [];
-    
-    for (let option of select.options) {
-        if (option.selected) {
-            selected.push(option.value);
-        }
-    }
-    
-    return selected;
-}
-
-// 載入天氣資料
-async function loadWeatherData() {
-    const selectedLocations = getSelectedLocations();
-    
-    if (selectedLocations.length === 0) {
-        showAlert('請先選擇縣市', 'warning');
-        return;
-    }
-    
+// 載入所有天氣資料
+async function loadAllWeatherData() {
     showLoading();
     
     try {
-        const params = new URLSearchParams();
-        selectedLocations.forEach(loc => params.append('locations', loc));
-        
-        const response = await fetch(`/api/weather-data?${params}`);
+        const response = await fetch('/api/weather-data');
         const result = await response.json();
         
         if (result.success) {
@@ -111,7 +92,9 @@ async function loadWeatherData() {
             // 更新表格
             filterAndDisplayTable();
             
-            showAlert(`成功載入 ${result.data.length} 筆資料`, 'success');
+            if (result.data.length > 0) {
+                showAlert(`成功載入 ${result.data.length} 筆資料`, 'success');
+            }
         } else {
             showAlert(result.message || result.error, 'danger');
         }
@@ -122,20 +105,19 @@ async function loadWeatherData() {
     }
 }
 
-// 更新天氣資料
-async function updateWeatherData() {
-    const selectedLocations = getSelectedLocations();
-    
-    if (selectedLocations.length === 0) {
-        showAlert('請先選擇縣市', 'warning');
-        return;
-    }
-    
+// 更新所有天氣資料
+async function updateAllWeatherData() {
     showLoading();
     
     try {
+        // 預設縣市列表
+        const allLocations = [
+            '臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市',
+            '基隆市', '新竹市', '新竹縣', '苗栗縣', '彰化縣', '南投縣'
+        ];
+        
         const params = new URLSearchParams();
-        selectedLocations.forEach(loc => params.append('locations', loc));
+        allLocations.forEach(loc => params.append('locations', loc));
         
         const response = await fetch(`/api/update-weather?${params}`);
         const result = await response.json();
@@ -144,8 +126,8 @@ async function updateWeatherData() {
             showAlert(result.message, 'success');
             // 更新完成後重新載入資料
             setTimeout(() => {
-                loadWeatherData();
-            }, 1000);
+                loadAllWeatherData();
+            }, 2000);
         } else {
             showAlert(result.error, 'danger');
         }
@@ -250,21 +232,12 @@ function updateLastUpdateTime() {
 
 // 載入天氣地圖
 async function loadWeatherMap() {
-    const selectedLocations = getSelectedLocations();
     const mapDiv = document.getElementById('weatherMap');
-    
-    if (selectedLocations.length === 0) {
-        mapDiv.innerHTML = '<div class="alert alert-warning">請先選擇縣市並載入資料</div>';
-        return;
-    }
     
     try {
         mapDiv.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>載入地圖中...</p></div>';
         
-        const params = new URLSearchParams();
-        selectedLocations.forEach(loc => params.append('locations', loc));
-        
-        const response = await fetch(`/api/weather-map?${params}`);
+        const response = await fetch('/api/weather-map');
         const mapHtml = await response.text();
         
         mapDiv.innerHTML = mapHtml;
