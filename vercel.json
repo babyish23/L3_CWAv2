@@ -1,0 +1,18 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "./app.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "./app.py"
+        }
+    ],
+    "env": {
+        "CWA_API_KEY": "@cwa_api_key"
+    }
+}

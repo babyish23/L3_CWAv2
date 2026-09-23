@@ -5,3 +5,5 @@ plotly>=5.15.0
 folium>=0.14.0
 python-dotenv>=1.0.0
 streamlit-folium>=0.15.0
+flask>=2.3.0
+gunicorn>=20.1.0
